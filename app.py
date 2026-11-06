@@ -9,14 +9,12 @@ from telebot import TeleBot, types
 app = Flask(__name__)
 
 # --- تنظیمات توکن ربات بله ---
-# توکن رباتت رو از «پاتفایندر» یا «BotFather» بله می‌گیری و اینجا میذاری (یا توی متغیرهای محیطی Render)
 TOKEN = os.environ.get("BOT_TOKEN", "توکن_ربات_بله_اینجا")
 WEB_APP_URL = os.environ.get("WEB_APP_URL", "https://safar-dar-zaman.onrender.com")
 
-# اگر از کتابخانه telebot برای بله استفاده می‌کنی، آدرس پایه API رو باید تغییر بدی (یا اگر پکیج مخصوص بله داری)
-# در پیام‌رسان بله، آدرس پایه معمولاً به شکل زیر است:
+# ساخت نمونه ربات و تنظیم آدرس اختصاصی سرور پیام‌رسان بله
 bot = TeleBot(TOKEN)
-# نکته: اگر کتابخانه مخصوص بله نداری، می‌تونی از درخواست‌های ساده requests هم برای ارسال پیام استفاده کنی.
+bot.api_url = "https://tapi.bale.ai/bot{0}/{1}"
 
 # --- سیستم پینگ داخلی برای جلوگیری از خواب سرور ---
 def keep_alive():
@@ -106,7 +104,6 @@ def step():
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     markup = types.InlineKeyboardMarkup()
-    # دکمه‌ای که وب‌اپلیکیشن رو باز می‌کند
     web_app = types.WebAppInfo(url=WEB_APP_URL)
     btn = types.InlineKeyboardButton(text="⏳ ورود به پورتال سفر در زمان", web_app=web_app)
     markup.add(btn)
@@ -118,13 +115,15 @@ def send_welcome(message):
     )
 
 
-# اجرای ربات به صورت پولینگ در یک ترد جداگانه (یا وب‌هوک)
+# اجرای ربات به صورت پولینگ در یک ترد جداگانه
 def run_bot():
     print("🤖 ربات بله روشن شد...")
-    try:
-        bot.infinity_polling(timeout=10, long_polling_timeout=5)
-    except Exception as e:
-        print("خطا در ربات:", e)
+    while True:
+        try:
+            bot.infinity_polling(timeout=10, long_polling_timeout=5)
+        except Exception as e:
+            print("خطا در ربات:", e)
+            time.sleep(5)
 
 threading.Thread(target=run_bot, daemon=True).start()
 
