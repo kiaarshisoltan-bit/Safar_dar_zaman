@@ -7,7 +7,7 @@ import os
 
 app = Flask(__name__)
 
-# --- سیستم پینگ داخلی برای جلوگیری از خواب زودهنگام ---
+# --- سیستم پینگ داخلی برای کمک به بیدار ماندن سرور ---
 def keep_alive():
     url = os.environ.get("SELF_URL", "https://safar-dar-zaman.onrender.com/health")
     time.sleep(10)
@@ -37,7 +37,7 @@ STORY = {
         ]
     },
     
-    # سناریوهای گذشته (شماره ۱: قلعه محاصره شده)
+    # سناریوهای گذشته (شماره ۱)
     "middle_ages_1": {
         "theme": "past",
         "title": "قرون وسطی - قلعه محاصره شده",
@@ -49,7 +49,7 @@ STORY = {
         ]
     },
     
-    # سناریوهای گذشته (شماره ۲: مصر باستان)
+    # سناریوهای گذشته (شماره ۲)
     "middle_ages_2": {
         "theme": "past",
         "title": "مصر باستان - هرم اسرارآمیز",
@@ -61,7 +61,7 @@ STORY = {
         ]
     },
 
-    # سناریوهای آینده (شماره ۱: شهر نئونی)
+    # سناریوهای آینده (شماره ۱)
     "future_city_1": {
         "theme": "future",
         "title": "شهر نئونی (سال ۳۰۲۰)",
@@ -73,7 +73,7 @@ STORY = {
         ]
     },
 
-    # سناریوهای آینده (شماره ۲: مریخ سرخ)
+    # سناریوهای آینده (شماره ۲)
     "future_city_2": {
         "theme": "future",
         "title": "کلونی مریخ (سال ۲۱۵۰)",
@@ -85,10 +85,10 @@ STORY = {
         ]
     },
 
-    # پایان‌های مثبت و منفی گذشته
+    # پایان‌های گذشته
     "past_escape_success": {
         "theme": "past",
-        "title": "فرار بزرگ از قرون وسطی",
+        "title": "فرار بزرگ",
         "text": "با مهارت تمام از دست شوالیه‌ها دررفتی و گنجینه‌ای از طلا هم با خودت آوردی! قهرمان تاریخ شدی.",
         "choices": [{"text": "شروع دوباره ماجراجویی", "next": "start"}]
     },
@@ -111,7 +111,7 @@ STORY = {
         "choices": [{"text": "تلاش مجدد در زمان", "next": "start"}]
     },
 
-    # پایان‌های مثبت و منفی آینده
+    # پایان‌های آینده
     "future_hack_success": {
         "theme": "future",
         "title": "هکر ارشد آینده",
@@ -138,7 +138,6 @@ STORY = {
     }
 }
 
-# لیست‌های تصادفی برای انتخاب رندوم داستان‌ها
 PAST_POOL = ["middle_ages_1", "middle_ages_2"]
 FUTURE_POOL = ["future_city_1", "future_city_2"]
 
@@ -151,7 +150,6 @@ def step():
     data = request.get_json()
     step_id = data.get('step', 'start')
     
-    # اگر کاربر دکمه‌ی سفر رندوم به گذشته یا آینده رو زد، یکی رو تصادفی انتخاب کن!
     if step_id == 'random_past':
         step_id = random.choice(PAST_POOL)
     elif step_id == 'random_future':
