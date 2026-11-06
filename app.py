@@ -7,7 +7,7 @@ import os
 
 app = Flask(__name__)
 
-# --- سیستم پینگ داخلی برای کمک به بیدار ماندن سرور ---
+# --- سیستم پینگ داخلی برای جلوگیری از خواب زودهنگام سرور ---
 def keep_alive():
     url = os.environ.get("SELF_URL", "https://safar-dar-zaman.onrender.com/health")
     time.sleep(10)
@@ -157,6 +157,16 @@ def step():
         
     current_node = STORY.get(step_id, STORY['start'])
     return jsonify(current_node)
+
+# --- مسیر جدید برای ارسال لینک وب‌اپ یا راهنمای ربات ---
+@app.route('/bot-start', methods=['GET'])
+def bot_start():
+    # این صفحه یا جیسون می‌تونه به ربات پیام خوش‌آمدگویی و دکمه بده
+    return jsonify({
+        "message": "سلام کیا! به ماشین زمان خوش آمدید.",
+        "web_app_url": "https://safar-dar-zaman.onrender.com",
+        "button_text": "⏳ ورود به پورتال سفر در زمان"
+    })
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
