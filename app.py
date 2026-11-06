@@ -4,12 +4,23 @@ import time
 import requests
 import random
 import os
+from telebot import TeleBot, types
 
 app = Flask(__name__)
 
-# --- سیستم پینگ داخلی برای جلوگیری از خواب زودهنگام سرور ---
+# --- تنظیمات توکن ربات بله ---
+# توکن رباتت رو از «پاتفایندر» یا «BotFather» بله می‌گیری و اینجا میذاری (یا توی متغیرهای محیطی Render)
+TOKEN = os.environ.get("BOT_TOKEN", "توکن_ربات_بله_اینجا")
+WEB_APP_URL = os.environ.get("WEB_APP_URL", "https://safar-dar-zaman.onrender.com")
+
+# اگر از کتابخانه telebot برای بله استفاده می‌کنی، آدرس پایه API رو باید تغییر بدی (یا اگر پکیج مخصوص بله داری)
+# در پیام‌رسان بله، آدرس پایه معمولاً به شکل زیر است:
+bot = TeleBot(TOKEN)
+# نکته: اگر کتابخانه مخصوص بله نداری، می‌تونی از درخواست‌های ساده requests هم برای ارسال پیام استفاده کنی.
+
+# --- سیستم پینگ داخلی برای جلوگیری از خواب سرور ---
 def keep_alive():
-    url = os.environ.get("SELF_URL", "https://safar-dar-zaman.onrender.com/health")
+    url = os.environ.get("SELF_URL", f"{WEB_APP_URL}/health")
     time.sleep(10)
     while True:
         try:
@@ -25,7 +36,7 @@ threading.Thread(target=keep_alive, daemon=True).start()
 def health():
     return "OK", 200
 
-# --- دیتابیس داستان‌ها و چالش‌های متنوع (رندوم) ---
+# --- دیتابیس داستان‌ها و چالش‌های رندوم ---
 STORY = {
     "start": {
         "theme": "present",
@@ -36,8 +47,6 @@ STORY = {
             {"text": "سفر به آینده (دنیای مرموز)", "next": "random_future"}
         ]
     },
-    
-    # سناریوهای گذشته (شماره ۱)
     "middle_ages_1": {
         "theme": "past",
         "title": "قرون وسطی - قلعه محاصره شده",
@@ -48,20 +57,6 @@ STORY = {
             {"text": "بازگشت به آزمایشگاه (حال)", "next": "start"}
         ]
     },
-    
-    # سناریوهای گذشته (شماره ۲)
-    "middle_ages_2": {
-        "theme": "past",
-        "title": "مصر باستان - هرم اسرارآمیز",
-        "text": "توی یک مقبره تاریک و پر از تله‌های باستانی گیر افتادی. مشعلت داره خاموش میشه!",
-        "choices": [
-            {"text": "حل معما و باز کردن صندوقچه فرعونی", "next": "past_pharaoh_win"},
-            {"text": "دویدن کورکورانه در راهروهای تاریک", "next": "past_trap_fail"},
-            {"text": "بازگشت به آزمایشگاه (حال)", "next": "start"}
-        ]
-    },
-
-    # سناریوهای آینده (شماره ۱)
     "future_city_1": {
         "theme": "future",
         "title": "شهر نئونی (سال ۳۰۲۰)",
@@ -72,74 +67,22 @@ STORY = {
             {"text": "بازگشت به آزمایشگاه (حال)", "next": "start"}
         ]
     },
-
-    # سناریوهای آینده (شماره ۲)
-    "future_city_2": {
-        "theme": "future",
-        "title": "کلونی مریخ (سال ۲۱۵۰)",
-        "text": "اکسیژن گنبد داره تموم میشه و آلارم هشدار قرمز همه‌جا رو پر کرده!",
-        "choices": [
-            {"text": "تعمیر مخزن اکسیژن اصلی با ابزار اضطراری", "next": "future_mars_win"},
-            {"text": "فرار به سمت سفینه نجات اضطراری", "next": "future_escape_pod"},
-            {"text": "بازگشت به آزمایشگاه (حال)", "next": "start"}
-        ]
-    },
-
-    # پایان‌های گذشته
     "past_escape_success": {
         "theme": "past",
         "title": "فرار بزرگ",
-        "text": "با مهارت تمام از دست شوالیه‌ها دررفتی و گنجینه‌ای از طلا هم با خودت آوردی! قهرمان تاریخ شدی.",
+        "text": "با مهارت تمام از دست شوالیه‌ها دررفتی و گنجینه‌ای از طلا هم با خودت آوردی!",
         "choices": [{"text": "شروع دوباره ماجراجویی", "next": "start"}]
     },
-    "past_magic_fail": {
-        "theme": "past",
-        "title": "سیاه‌چال تاریک",
-        "text": "شوالیه‌ها فریب ترفندتو نخوردن و انداختنت توی سیاه‌چال! بازی تموم شد.",
-        "choices": [{"text": "تلاش مجدد در زمان", "next": "start"}]
-    },
-    "past_pharaoh_win": {
-        "theme": "past",
-        "title": "گنجینه فرعون",
-        "text": "معمای هرم رو به درستی حل کردی و راز جاودانگی رو کشف کردی! فوق‌العاده بودی.",
-        "choices": [{"text": "شروع دوباره ماجراجویی", "next": "start"}]
-    },
-    "past_trap_fail": {
-        "theme": "past",
-        "title": "تله‌های باستانی",
-        "text": "توی تاریکی پات رفت رو سنگ فشار و تیرهای زهرآگین به سمتت پرتاب شدن...",
-        "choices": [{"text": "تلاش مجدد در زمان", "next": "start"}]
-    },
-
-    # پایان‌های آینده
     "future_hack_success": {
         "theme": "future",
         "title": "هکر ارشد آینده",
         "text": "سیستم امنیتی شهر رو دور زدی و حالا تمام ربات‌ها به فرمان تو هستن!",
         "choices": [{"text": "شروع دوباره ماجراجویی", "next": "start"}]
-    },
-    "future_fly_danger": {
-        "theme": "future",
-        "title": "پرواز بی‌سرانجام",
-        "text": "پرشت بی‌محابا بود و نتونستی ماشین پرنده رو بگیری؛ سقوط آزاد به اعماق شهر...",
-        "choices": [{"text": "تلاش مجدد در زمان", "next": "start"}]
-    },
-    "future_mars_win": {
-        "theme": "future",
-        "title": "نجات کلونی مریخ",
-        "text": "در آخرین لحظه مخزن اکسیژن رو تعمیر کردی و کل انسان‌های مریخ رو نجات دادی!",
-        "choices": [{"text": "شروع دوباره ماجراجویی", "next": "start"}]
-    },
-    "future_escape_pod": {
-        "theme": "future",
-        "title": "سرگردان در فضا",
-        "text": "سفینه نجات پرتاب شد ولی سیستم هدایتش قفل شد و توی فضا سرگردان موندی...",
-        "choices": [{"text": "تلاش مجدد در زمان", "next": "start"}]
     }
 }
 
-PAST_POOL = ["middle_ages_1", "middle_ages_2"]
-FUTURE_POOL = ["future_city_1", "future_city_2"]
+PAST_POOL = ["middle_ages_1"]
+FUTURE_POOL = ["future_city_1"]
 
 @app.route('/')
 def index():
@@ -158,15 +101,33 @@ def step():
     current_node = STORY.get(step_id, STORY['start'])
     return jsonify(current_node)
 
-# --- مسیر جدید برای ارسال لینک وب‌اپ یا راهنمای ربات ---
-@app.route('/bot-start', methods=['GET'])
-def bot_start():
-    # این صفحه یا جیسون می‌تونه به ربات پیام خوش‌آمدگویی و دکمه بده
-    return jsonify({
-        "message": "سلام کیا! به ماشین زمان خوش آمدید.",
-        "web_app_url": "https://safar-dar-zaman.onrender.com",
-        "button_text": "⏳ ورود به پورتال سفر در زمان"
-    })
+
+# --- هندلر دستور استارت ربات بله ---
+@bot.message_handler(commands=['start'])
+def send_welcome(message):
+    markup = types.InlineKeyboardMarkup()
+    # دکمه‌ای که وب‌اپلیکیشن رو باز می‌کند
+    web_app = types.WebAppInfo(url=WEB_APP_URL)
+    btn = types.InlineKeyboardButton(text="⏳ ورود به پورتال سفر در زمان", web_app=web_app)
+    markup.add(btn)
+    
+    bot.send_message(
+        message.chat.id, 
+        "سلام کیا جان! 🤖✨\nبه ماشین زمان خوش آمدید. برای ورود به دنیای گرافیکی و شروع ماجراجویی، روی دکمه زیر بزن:", 
+        reply_markup=markup
+    )
+
+
+# اجرای ربات به صورت پولینگ در یک ترد جداگانه (یا وب‌هوک)
+def run_bot():
+    print("🤖 ربات بله روشن شد...")
+    try:
+        bot.infinity_polling(timeout=10, long_polling_timeout=5)
+    except Exception as e:
+        print("خطا در ربات:", e)
+
+threading.Thread(target=run_bot, daemon=True).start()
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
