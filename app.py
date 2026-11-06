@@ -4,17 +4,13 @@ import time
 import requests
 import random
 import os
-from telebot import TeleBot, types
 
 app = Flask(__name__)
 
 # --- تنظیمات توکن ربات بله ---
 TOKEN = os.environ.get("BOT_TOKEN", "توکن_ربات_بله_اینجا")
 WEB_APP_URL = os.environ.get("WEB_APP_URL", "https://safar-dar-zaman.onrender.com")
-
-# ساخت نمونه ربات و تنظیم آدرس اختصاصی سرور پیام‌رسان بله
-bot = TeleBot(TOKEN)
-bot.api_url = "https://tapi.bale.ai/bot{0}/{1}"
+BALE_API = f"https://tapi.bale.ai/bot{TOKEN}"
 
 # --- سیستم پینگ داخلی برای جلوگیری از خواب سرور ---
 def keep_alive():
@@ -26,7 +22,7 @@ def keep_alive():
             print("✅ پینگ خودکار موفق:", response.status_code)
         except Exception as e:
             print("❌ خطا در پینگ خودکار:", e)
-        time.sleep(300)  # هر ۵ دقیقه
+        time.sleep(300)
 
 threading.Thread(target=keep_alive, daemon=True).start()
 
@@ -94,38 +90,46 @@ def step():
     if step_id == 'random_past':
         step_id = random.choice(PAST_POOL)
     elif step_id == 'random_future':
-        step_id = random.choice(FUTURE_POOL)
+        step_id = random.choice(POOL := FUTURE_POOL)
         
     current_node = STORY.get(step_id, STORY['start'])
     return jsonify(current_node)
 
 
-# --- هندلر دستور استارت ربات بله ---
-@bot.message_handler(commands=['start'])
-def send_welcome(message):
-    markup = types.InlineKeyboardMarkup()
-    web_app = types.WebAppInfo(url=WEB_APP_URL)
-    btn = types.InlineKeyboardButton(text="⏳ ورود به پورتال سفر در زمان", web_app=web_app)
-    markup.add(btn)
-    
-    bot.send_message(
-        message.chat.id, 
-        "سلام کیا جان! 🤖✨\nبه ماشین زمان خوش آمدید. برای ورود به دنیای گرافیکی و شروع ماجراجویی، روی دکمه زیر بزن:", 
-        reply_markup=markup
-    )
+# --- دریافت پیام‌ها از بله (Webhook) ---
+@app.route(f'/webhook/{TOKEN}', methods=['POST'])
+def webhook():
+    update = request.get_json()
+    if not update:
+        return "OK", 200
 
+    message = update.get('message') or update.get('callback_query', {}).get('message')
+    if message:
+        chat_id = message['chat']['id']
+        text = message.get('text', '')
 
-# اجرای ربات به صورت پولینگ در یک ترد جداگانه
-def run_bot():
-    print("🤖 ربات بله روشن شد...")
-    while True:
-        try:
-            bot.infinity_polling(timeout=10, long_polling_timeout=5)
-        except Exception as e:
-            print("خطا در ربات:", e)
-            time.sleep(5)
+        if text == '/start':
+            # ارسال پیام خوش‌آمدگویی به همراه دکمه شیشه‌ای وب‌اپ
+            payload = {
+                "chat_id": chat_id,
+                "text": "سلام کیا جان! 🤖✨\nبه ماشین زمان خوش آمدید. برای ورود به دنیای گرافیکی و شروع ماجراجویی، روی دکمه زیر بزن:",
+                "reply_markup": {
+                    "inline_keyboard": [
+                        [
+                            {
+                                "text": "⏳ ورود به پورتال سفر در زمان",
+                                "web_app": {"url": WEB_APP_URL}
+                            }
+                        ]
+                    ]
+                }
+            }
+            try:
+                requests.post(f"{BALE_API}/sendMessage", json=payload, timeout=10)
+            except Exception as e:
+                print("خطا در ارسال پیام به بله:", e)
 
-threading.Thread(target=run_bot, daemon=True).start()
+    return "OK", 200
 
 
 if __name__ == '__main__':
