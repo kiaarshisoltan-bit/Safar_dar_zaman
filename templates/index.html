@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>سفر زمان تعاملی</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --text-color: #e0e0e0;
+            --accent-color: #bb86fc;
+            --btn-hover: #3700b3;
+        }
+
+        body.modern {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --accent-color: #38bdf8;
+            --btn-hover: #0284c7;
+        }
+
+        body.egypt {
+            --bg-color: #1c1404;
+            --card-bg: #2d220c;
+            --accent-color: #d97706;
+            --btn-hover: #b45309;
+        }
+
+        body.cyberpunk {
+            --bg-color: #050505;
+            --card-bg: #111111;
+            --accent-color: #22c55e;
+            --btn-hover: #16a34a;
+        }
+
+        body.gameover {
+            --bg-color: #2a0808;
+            --card-bg: #3d0c0c;
+            --accent-color: #ef4444;
+            --btn-hover: #dc2626;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Tahoma', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            transition: background-color 0.5s ease;
+        }
+
+        .game-container {
+            background-color: var(--card-bg);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            width: 450px;
+            text-align: center;
+            transition: background-color 0.5s ease;
+        }
+
+        h2 {
+            color: var(--accent-color);
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+        }
+
+        p {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 25px;
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            background-color: var(--accent-color);
+            color: #fff;
+            border: none;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .btn:hover {
+            background-color: var(--btn-hover);
+        }
+    </style>
+</head>
+<body class="modern">
+
+    <div class="game-container">
+        <h2 id="era-title">بارگذاری...</h2>
+        <p id="story-text">لطفاً صبر کنید...</p>
+        <div id="choices-box"></div>
+    </div>
+
+    <script>
+        function loadNode(nodeId) {
+            fetch('/get_node', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ node: nodeId })
+            })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('era-title').innerText = data.era;
+                document.getElementById('story-text').innerText = data.text;
+                
+                // تغییر تم گرافیکی صفحه بر اساس دوره زمانی
+                document.body.className = data.theme;
+
+                let choicesBox = document.getElementById('choices-box');
+                choicesBox.innerHTML = '';
+                
+                data.choices.forEach(choice => {
+                    let btn = document.createElement('button');
+                    btn.className = 'btn';
+                    btn.innerText = choice.text;
+                    btn.onclick = () => loadNode(choice.next);
+                    choicesBox.appendChild(btn);
+                });
+            });
+        }
+
+        // بارگذاری اولیه بازی
+        loadNode('start');
+    </script>
+</body>
+</html>
