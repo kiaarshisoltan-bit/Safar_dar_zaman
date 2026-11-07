@@ -1,8 +1,9 @@
 import os
 import time
+import random
 import threading
 import requests
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request
 
 app = Flask(__name__)
 
@@ -14,7 +15,7 @@ WEB_APP_URL = os.environ.get(
 BALE_BASE = "https://tapi.bale.ai"
 
 # ---------------------------------------------------------------
-# داستان‌ها (همان‌هایی که قبلاً داشتیم؛ اگر بلندترشان داری، جایگزین کن)
+# داستان‌ها
 # ---------------------------------------------------------------
 PAST_POOL = [
     "به سال ۱۲۵۰ خورشیدی رسیدی. هوای بازار پر از بوی نان و ادویه است...",
@@ -28,23 +29,98 @@ FUTURE_POOL = [
     "به شهری رسیدی که ماشین‌ها پرواز می‌کنند و درخت‌ها روی پشت‌بام‌ها رشد می‌کنند...",
 ]
 
-import random
+PRESENT_POOL = [
+    "ماشین زمان زیر پای تو روشن می‌شود. سه چراغ قرمز، سبز و آبی چشمک می‌زنند...",
+    "در آزمایشگاه تاریک ایستاده‌ای. ساعت دیواری عقب‌گرد می‌کند و هوا سرد می‌شود...",
+    "پورتال مقابلت باز شده است. از آن بوی باران قدیمی و نور نئون بیرون می‌زند...",
+]
+
+
+# ---------------------------------------------------------------
+# منطق گام‌های بازی
+# ---------------------------------------------------------------
+def make_step(step_id):
+    if step_id == "start":
+        return {
+            "theme": "present",
+            "title": "⏳ ماشین زمان",
+            "text": random.choice(PRESENT_POOL),
+            "choices": [
+                {"text": "🏛️ سفر به گذشته", "next": "past"},
+                {"text": "🚀 سفر به آینده", "next": "future"},
+            ],
+        }
+
+    if step_id == "past":
+        return {
+            "theme": "past",
+            "title": "🏛️ گذشته",
+            "text": random.choice(PAST_POOL),
+            "choices": [
+                {"text": "🔎 جلوتر برو", "next": "past_deep"},
+                {"text": "🏠 بازگشت به حال", "next": "start"},
+            ],
+        }
+
+    if step_id == "past_deep":
+        return {
+            "theme": "past",
+            "title": "🏛️ اعماق گذشته",
+            "text": random.choice(PAST_POOL),
+            "choices": [
+                {"text": "⏭️ یک قدم دیگر", "next": "past_deep"},
+                {"text": "🏠 بازگشت به حال", "next": "start"},
+            ],
+        }
+
+    if step_id == "future":
+        return {
+            "theme": "future",
+            "title": "🚀 آینده",
+            "text": random.choice(FUTURE_POOL),
+            "choices": [
+                {"text": "🔎 جلوتر برو", "next": "future_deep"},
+                {"text": "🏠 بازگشت به حال", "next": "start"},
+            ],
+        }
+
+    if step_id == "future_deep":
+        return {
+            "theme": "future",
+            "title": "🚀 اعماق آینده",
+            "text": random.choice(FUTURE_POOL),
+            "choices": [
+                {"text": "⏭️ یک قدم دیگر", "next": "future_deep"},
+                {"text": "🏠 بازگشت به حال", "next": "start"},
+            ],
+        }
+
+    return {
+        "theme": "present",
+        "title": "⚠️ گمشده در زمان",
+        "text": "این مسیر وجود ندارد. ماشین زمان تو را به نقطه‌ی شروع برگرداند.",
+        "choices": [{"text": "🔁 شروع دوباره", "next": "start"}],
+    }
+
 
 # ---------------------------------------------------------------
 # وب (فلاسک)
 # ---------------------------------------------------------------
 @app.route("/")
 def index():
-    return render_template(
-        "index.html",
-        past_story=random.choice(PAST_POOL),
-        future_story=random.choice(FUTURE_POOL),
-    )
+    return render_template("index.html")
 
 
 @app.route("/health")
 def health():
     return jsonify({"status": "ok"})
+
+
+@app.route("/api/step", methods=["POST"])
+def api_step():
+    data = request.get_json(silent=True) or {}
+    step_id = data.get("step", "start")
+    return jsonify(make_step(step_id))
 
 
 @app.route("/api/story/<period>")
@@ -66,7 +142,6 @@ def bale_call(method, payload=None, timeout=35):
     url = f"{BALE_BASE}/bot{TOKEN}/{method}"
     response = requests.post(url, json=payload or {}, timeout=timeout)
 
-    # لاگ کامل برای عیب‌یابی (توکن در URL است، پس URL را چاپ نکن)
     print(f"[Bale] {method} -> HTTP {response.status_code} | {response.text[:400]}")
 
     response.raise_for_status()
@@ -120,7 +195,6 @@ def run_bale_polling():
         print("❌ BOT_TOKEN در Environment تنظیم نشده است. پولینگ اجرا نمی‌شود.")
         return
 
-    # اگر قبلاً وبهوک ثبت شده، باید حذف شود وگرنه getUpdates خطا می‌دهد
     try:
         bale_call("deleteWebhook", {})
         print("✅ وبهوک (در صورت وجود) حذف شد.")
@@ -183,7 +257,6 @@ def start_background_threads():
     threading.Thread(target=self_ping, daemon=True).start()
 
 
-# گارد برای جلوگیری از اجرای دوباره در حالت reload
 if os.environ.get("WERKZEUG_RUN_MAIN") != "true":
     start_background_threads()
 
