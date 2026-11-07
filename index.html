@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سفر در زمان - ماجراجویی موازی</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --text-color: #c9d1d9;
+            --accent-color: #58a6ff;
+            --card-bg: #161b22;
+            --border-color: #30363d;
+        }
+
+        .theme-past {
+            --bg-color: #1a0f08;
+            --text-color: #f3d5b5;
+            --accent-color: #d4a373;
+            --card-bg: #2c1d11;
+            --border-color: #bc6c25;
+        }
+
+        .theme-future {
+            --bg-color: #030b1e;
+            --text-color: #e0fbfc;
+            --accent-color: #48cae4;
+            --card-bg: #0b1d3a;
+            --border-color: #0077b6;
+        }
+
+        .theme-present {
+            --bg-color: #0f172a;
+            --text-color: #e2e8f0;
+            --accent-color: #38bdf8;
+            --card-bg: #1e293b;
+            --border-color: #475569;
+        }
+
+        body {
+            font-family: Tahoma, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            transition: background 0.5s ease, color 0.5s ease;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 450px;
+            background-color: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            box-sizing: border-box;
+            text-align: center;
+            transition: all 0.5s ease;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: var(--accent-color);
+        }
+
+        .story-box {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            min-height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            line-height: 1.6;
+            border-right: 4px solid var(--accent-color);
+            text-align: right;
+        }
+
+        .choices {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        button {
+            background-color: var(--accent-color);
+            color: #000;
+            border: none;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        /* صفحه بارگذاری پورتال زمان */
+        #portal-loader {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 250px;
+        }
+
+        .portal-ring {
+            width: 80px;
+            height: 80px;
+            border: 6px dashed var(--accent-color);
+            border-radius: 50%;
+            animation: spin 2s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body class="theme-present">
+
+    <div class="container">
+        <!-- لودر پورتال زمان -->
+        <div id="portal-loader">
+            <div class="portal-ring"></div>
+            <p id="loading-tip">در حال کالیبره‌کردن ماشین زمان...</p>
+        </div>
+
+        <!-- محتوای اصلی بازی -->
+        <div id="game-content" class="hidden">
+            <h1 id="game-title">ماشین زمان کیا</h1>
+            <div class="story-box" id="story-text">
+                در حال آماده‌سازی سفر...
+            </div>
+            <div class="choices" id="choices-container">
+                <!-- دکمه‌ها اینجا به صورت پویا ساخته می‌شن -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // آدرس بک‌اند تو روی Render
+        const BACKEND_URL = "https://safar-dar-zaman.onrender.com/api/step";
+
+        const tips = [
+            "در حال اتصال به ابعاد موازی...",
+            "دور زدن پارادوکس‌های زمانی...",
+            "شارژ هسته‌ی پلاسما...",
+            "آماده‌سازی پورتال انتقال..."
+        ];
+
+        let tipIndex = 0;
+        const tipInterval = setInterval(() => {
+            tipIndex = (tipIndex + 1) % tips.length;
+            const tipEl = document.getElementById('loading-tip');
+            if(tipEl) tipEl.innerText = tips[tipIndex];
+        }, 1200);
+
+        // ارسال درخواست به سرور پایتون
+        async function makeStep(choiceId) {
+            document.getElementById('portal-loader').classList.remove('hidden');
+            document.getElementById('game-content').classList.add('hidden');
+
+            try {
+                const response = await fetch(BACKEND_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ choice: choiceId })
+                });
+
+                const data = await response.json();
+                updateGameUI(data);
+            } catch (error) {
+                console.error("خطا در ارتباط با ماشین زمان:", error);
+                document.getElementById('story-text').innerText = "خطا در برقراری ارتباط با پورتال زمان! اتصال اینترنت یا سرور را بررسی کنید.";
+                document.getElementById('portal-loader').classList.add('hidden');
+                document.getElementById('game-content').classList.remove('hidden');
+            }
+        }
+
+        // آپدیت ظاهر بازی بر اساس پاسخ سرور
+        function updateGameUI(data) {
+            clearInterval(tipInterval);
+            document.getElementById('portal-loader').classList.add('hidden');
+            document.getElementById('game-content').classList.remove('hidden');
+
+            // تغییر تم بر اساس زمان (گذشته، آینده، حال)
+            document.body.className = `theme-${data.theme || 'present'}`;
+
+            // متن داستان
+            document.getElementById('story-text').innerText = data.story;
+
+            // ساخت دکمه‌های انتخاب
+            const container = document.getElementById('choices-container');
+            container.innerHTML = '';
+
+            data.choices.forEach(choice => {
+                const btn = document.createElement('button');
+                btn.innerText = choice.text;
+                btn.onclick = () => makeStep(choice.next);
+                container.appendChild(btn);
+            });
+        }
+
+        // شروع اولیه بازی به محض لود شدن صفحه
+        window.onload = () => {
+            setTimeout(() => {
+                makeStep('start');
+            }, 1500);
+        };
+    </script>
+</body>
+</html>
