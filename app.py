@@ -1,111 +1,108 @@
+import os
 import random
-from flask import Flask, jsonify, request
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)  # فعال‌سازی CORS برای ارتباط با گیت‌هاب پیجز
 
-# استخرهای داستانی برای جلوگیری از تکرار و جذابیت بیشتر
+# --- CORS: اجازه به همه دامنه‌ها (گیت‌هاب پیجز، لوکال و ...) ---
+CORS(app, resources={r"/*": {"origins": "*"}},
+     allow_headers=["Content-Type", "Authorization"],
+     methods=["GET", "POST", "OPTIONS"], supports_credentials=False)
+
+
+@app.after_request
+def add_cors_headers(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    return response
+
+
+# ---------------- داستان‌ها ----------------
 STORIES = {
-    "start": [
+    "past": [
         {
-            "theme": "present",
-            "story": "آزمایشگاه مرکزی در دود و مه غلیظی فرو رفته است. پنل‌های کنترل با نورهای قرمز چشمک می‌زنند و صدای آژیر خطر فضا را پر کرده. هسته‌ی ماشین زمان ناپایدار شده است!",
-            "choices": [
-                {
-                    "text": "تنظیم مختصات برای سفری به گذشته (قرون وسطی)",
-                    "next": "past_1",
-                },
-                {
-                    "text": "فرار به آینده‌ی دور (سال ۳۰۲۴)",
-                    "next": "future_1",
-                },
-            ],
-        }
-    ],
-    "past_1": [
-        {
-            "theme": "past",
-            "story": "پورتال باز می‌شود و ناگهان بوی خاک باران‌خورده و دود هیزم به مشام می‌رسد. تو وسط یک قلعه‌ی قرون وسطایی ایستاده‌ای و شوالیه‌ها با تعجب به لباس‌هایت خیره شده‌اند.",
-            "choices": [
-                {
-                    "text": "تلاش برای توضیح دادن تکنولوژی به نگهبانان",
-                    "next": "past_fail",
-                },
-                {
-                    "text": "پنهان شدن در انبار کاه و بازنشانی ماشین زمان",
-                    "next": "start",
-                },
-            ],
+            "title": "کوچه‌های بغداد، سال ۸۰۰ میلادی",
+            "text": "بوی زعفران و چرم تازه توی هواست. مردی با عمامه‌ی آبی از کنارت رد می‌شود و چیزی روی زمین می‌اندازد...",
+            "choices": ["شیء را بردار", "دنبال مرد برو", "بی‌تفاوت رد شو"],
         },
         {
-            "theme": "past",
-            "story": "زمان به عقب برگشته است؛ قرن‌ها پیش در مصر باستان. در برابر عظمت هرم بزرگ گیزا ایستاده‌ای و کاهنان در حال انجام مراسمی عجیب هستند.",
-            "choices": [
-                {
-                    "text": "نفوذ به درون مقبره اسرارآمیز",
-                    "next": "start",
-                },
-                {
-                    "text": "فرار به سوی بیابان و فعال کردن پورتال اضطراری",
-                    "next": "start",
-                },
-            ],
+            "title": "کاروانسرای جاده‌ی ابریشم",
+            "text": "شب است و کاروانی خسته در کاروانسرا اتراق کرده. پیرمردی کنارت می‌نشیند و می‌گوید: «مسافری از آینده؟ عجیب...»",
+            "choices": ["راستش را بگو", "دروغ بگو", "سکوت کن"],
+        },
+        {
+            "title": "روزگار هخامنشیان",
+            "text": "ستون‌های سنگی تخت جمشید بالای سرت قد کشیده‌اند. نگهبانی با نیزه به سمتت می‌آید و فریاد می‌زند...",
+            "choices": ["فرار کن", "تسلیم شو", "با اشاره توضیح بده"],
         },
     ],
-    "future_1": [
+    "future": [
         {
-            "theme": "future",
-            "story": "نور خیره‌کننده‌ای چشم‌ت را می‌سوزاند. آسمان‌خراش‌های معلق در آسمان و ماشین‌های پرنده در حال تردد هستند. یک ربات نگهبان پرنده با نور اسکنر به سمتت می‌آید!",
-            "choices": [
-                {
-                    "text": "هک کردن سیستم ربات با ابزار دستی",
-                    "next": "start",
-                },
-                {
-                    "text": "پریدن به داخل ایستگاه متروی معلق",
-                    "next": "start",
-                },
-            ],
+            "title": "نئون‌شهر، سال ۲۱۴۰",
+            "text": "باران اسیدی روی شیشه‌ی کلاه‌خودت می‌خورد. هوش مصنوعی شهر می‌پرسد: «شهروند ثبت‌نشده! هویتت؟»",
+            "choices": ["هویت جعلی بساز", "واقعیت را بگو", "فرار کن"],
         },
         {
-            "theme": "future",
-            "story": "به سال ۳۰۲۴ رسیدی؛ کره‌ی زمین توسط گیاهان غول‌پیکر تسخیر شده و انسان‌ها در شهرهای گنبدی زیر آب زندگی می‌کنند.",
-            "choices": [
-                {
-                    "text": "ورود به گنبد مرکزی زیر آب",
-                    "next": "start",
-                },
-                {
-                    "text": "بازگشت سریع به زمان حال",
-                    "next": "start",
-                },
-            ],
+            "title": "ایستگاه مداری زحل",
+            "text": "از پنجره، حلقه‌های زحل را می‌بینی. یک ربات تعمیرکار جلویت را سد کرده و می‌گوید: «بلیتت منقضی شده.»",
+            "choices": ["بلیت را هک کن", "مذاکره کن", "از دریچه فرار کن"],
         },
-    ],
-    "past_fail": [
         {
-            "theme": "past",
-            "story": "نگهبانان تو را به عنوان جادوگر دستگیر کردند! اما قبل از اینکه اتفاقی بیفته، با یک جرقه از ماشین زمان به زمان حال فرار می‌کنی.",
-            "choices": [{"text": "تلاش مجدد برای سفر در زمان", "next": "start"}],
-        }
+            "title": "زمین مرده، سال ۲۳۰۰",
+            "text": "هیچ درختی نیست. فقط گرد و خاک و آسمان خاکستری. ردی از نور آبی تو را به سمت یک گنبد می‌کشاند...",
+            "choices": ["وارد گنبد شو", "رد نور را دنبال کن", "برگرد به ماشین زمان"],
+        },
     ],
 }
 
 
-@app.route("/api/step", methods=["POST"])
+def pick_story(era: str):
+    pool = STORIES.get(era) or STORIES["past"]
+    return random.choice(pool)
+
+
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({"status": "ok", "message": "پورتال زمان فعال است ⏳"})
+
+
+@app.route("/api/health", methods=["GET"])
+def health():
+    return jsonify({"status": "ok"})
+
+
+@app.route("/api/step", methods=["POST", "OPTIONS"])
 def step():
-  data = request.get_json() or {}
-  choice = data.get("choice", "start")
+    if request.method == "OPTIONS":
+        return ("", 204)
 
-  # اگر انتخاب در لیست داستان‌ها بود، یکی به صورت رندوم انتخاب کن تا بازی تکراری نشه
-  if choice in STORIES:
-    node = random.choice(STORIES[choice])
-  else:
-    node = random.choice(STORIES["start"])
+    data = request.get_json(silent=True) or {}
+    era = str(data.get("era", "past")).lower()
+    if era not in STORIES:
+        era = "past"
 
-  return jsonify(node)
+    story = pick_story(era)
+    return jsonify({
+        "era": era,
+        "title": story["title"],
+        "text": story["text"],
+        "choices": story["choices"],
+    })
+
+
+@app.route("/api/start", methods=["POST", "OPTIONS"])
+def start():
+    if request.method == "OPTIONS":
+        return ("", 204)
+    return jsonify({
+        "status": "ok",
+        "eras": list(STORIES.keys()),
+        "message": "سفر در زمان آغاز شد",
+    })
 
 
 if __name__ == "__main__":
-  app.run(host="0.0.0.0", port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
