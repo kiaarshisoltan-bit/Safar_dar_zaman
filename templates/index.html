@@ -144,7 +144,6 @@
 </head>
 <body>
 
-    <!-- صفحه لودینگ پورتال زمان -->
     <div id="portal-loader">
         <div class="portal-ring"></div>
         <div class="loading-text" id="loading-tip">در حال عبور از تونل زمان...</div>
@@ -177,18 +176,23 @@
 
         async function makeStep(stepId) {
             showLoader();
-            
+
             const startTime = Date.now();
-            
+
             try {
                 const response = await fetch('/api/step', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ step: stepId })
                 });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
                 const data = await response.json();
 
-                // حداقل زمان انیمیشن برای اینکه پورتال قشنگ دیده بشه (0.6 ثانیه - بسیار سریع و چابک)
+                // حداقل زمان انیمیشن برای اینکه پورتال قشنگ دیده بشه
                 const elapsed = Date.now() - startTime;
                 if (elapsed < 600) {
                     await new Promise(r => setTimeout(r, 600 - elapsed));
@@ -204,7 +208,6 @@
         }
 
         function updateUI(data) {
-            // تغییر تم بدنه
             document.body.className = `theme-${data.theme || 'present'}`;
 
             document.getElementById('title').innerText = data.title;
@@ -222,7 +225,6 @@
             });
         }
 
-        // بارگذاری اولیه بازی
         window.onload = () => {
             makeStep('start');
         };
